@@ -111,7 +111,6 @@ void CacheGeneric<State, Addr_t, Energy>::createStats(const char *section, const
         const char *number = &name[2];
         procId = atoi(number);
     }
-
     if (Energy) {
         PowerGroup pg;
         pg = getRightStat(type);
@@ -231,9 +230,8 @@ CacheAssoc<State, Addr_t, Energy>::CacheAssoc(int32_t size, int32_t assoc, int32
         policy = RANDOM;
     else if (strcasecmp(pStr, k_LRU)    == 0)
         policy = LRU;
-    else if (strcasecmp(pStr, k_NXLRU) == 0){
-	policy = NXLRU;
-    }
+    else if (strcasecmp(pStr, k_NXLRU)    == 0)
+        policy = NXLRU;
     else {
         MSG("Invalid cache policy [%s]",pStr);
         exit(0);
@@ -325,12 +323,14 @@ typename CacheAssoc<State, Addr_t, Energy>::Line
     Line **lineHit=0;
     Line **lineFree=0; // Order of preference, invalid, locked
     Line **setEnd = theSet + assoc;
+    int count = 0;
+    Line **buf = 0;
 
     // Start in reverse order so that get the youngest invalid possible,
     // and the oldest isLocked possible (lineFree)
     {
         Line **l = setEnd -1;
-        while(l >= theSet) {
+        while(l >= theSet && (policy == RANDOM || policy == LRU)) {
             if ((*l)->getTag() == tag) {
                 lineHit = l;
                 break;
@@ -358,6 +358,7 @@ typename CacheAssoc<State, Addr_t, Energy>::Line
                 if (count == 2)
                     lineFree = l;
             }
+
             // If line is invalid, isLocked must be false
             GI(!(*l)->isValid(), !(*l)->isLocked());
             l--;
@@ -380,10 +381,14 @@ typename CacheAssoc<State, Addr_t, Energy>::Line
         if (policy == RANDOM) {
             lineFree = &theSet[irand];
             irand = (irand + 1) & maskAssoc;
-        } else {
+        } else if (policy == LRU) {
             I(policy == LRU);
             // Get the oldest line possible
             lineFree = setEnd-1;
+        } else if ((policy == NXLRU)) {
+            I(policy == NXLRU);
+            // Get the second oldest line
+            lineFree = setEnd - 2;
         }
     } else if(ignoreLocked) {
         if (policy == RANDOM && (*lineFree)->isValid()) {
@@ -454,8 +459,9 @@ typename CacheDM<State, Addr_t, Energy>::Line *CacheDM<State, Addr_t, Energy>::f
         I(line->isValid());
         return line;
     }
-
+    
     return 0;
+    //return l;
 }
 
 template<class State, class Addr_t, bool Energy>

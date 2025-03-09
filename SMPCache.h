@@ -37,7 +37,6 @@ Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 #include "vector"
 #include "estl.h"
-#include <map>
 
 class SMPCache : public MemObj {
 public:
@@ -45,13 +44,7 @@ public:
     typedef CacheGeneric<SMPCacheState, PAddr, false>::CacheLine Line;
 
 private:
-	static const char *cohOutfile;
-
-    void processReply(MemRequest *mreq);
-    //void resolveSituation(SMPMemRequest *sreq);
 protected:
-
-
     CacheType *cache;
 
     PortGeneric *cachePort;
@@ -59,8 +52,7 @@ protected:
     TimeDelta_t hitDelay;
 
     MSHR<PAddr, SMPCache> *outsReq; // buffer for requests coming from upper levels
-    //static MSHR<PAddr, SMPCache> *mutExclBuffer;
-
+    static MSHR<PAddr, SMPCache> *mutExclBuffer;
 
     class Entry {
     public:
@@ -129,8 +121,6 @@ protected:
 
     // local routines
     void doRead(MemRequest *mreq);
-    // JJO
-    void doReadRemote(MemRequest *mreq);
     void doWrite(MemRequest *mreq);
     void doPushLine(MemRequest *mreq);
     void doWriteBack(PAddr addr);
@@ -140,9 +130,6 @@ protected:
 
     typedef CallbackMember1<SMPCache, MemRequest *,
             &SMPCache::doRead> doReadCB;
-    // JJO
-    typedef CallbackMember1<SMPCache, MemRequest *,
-            &SMPCache::doReadRemote> doReadRemoteCB;
     typedef CallbackMember1<SMPCache, MemRequest *,
             &SMPCache::doWrite> doWriteCB;
     typedef CallbackMember1<SMPCache, MemRequest *,
@@ -155,59 +142,8 @@ protected:
             &SMPCache::concludeWriteBack> concludeWriteBackCB;
 
 public:
-
-    typedef CallbackMember1<SMPCache, MemRequest *,
-            &SMPCache::sendRead> doReadAgainCB;
-    typedef CallbackMember1<SMPCache, MemRequest *,
-            &SMPCache::sendWrite> doWriteAgainCB;
-
     SMPCache(SMemorySystem *gms, const char *section, const char *name);
     ~SMPCache();
-
-	static void PrintStat();
-
-#if (defined SIGDEBUG)
-    void pStat();
-
-#endif
-
-    //static std::set<SMPMemRequest*> detourSet;
-    //static std::map<SMPMemRequest*, SMPMemRequest*> replaceMap;
-
-    // JJO
-    //static bool msgPrinted;
-    void doWriteAgain(MemRequest *mreq);
-
-    //static HASH_MAP<PAddr, std::list<CallbackBase*> > pendingList;
-
-    //static std::map<PAddr, MemRequest* > mutInvReq;
-
-    static unsigned int dlcnt;
-
-    int32_t maxNodeID;
-	int32_t maxNodeID_bit;
-	int32_t nodeSelSht;
-    inline int32_t getMaxNodeID() { return maxNodeID; }
-	inline int32_t getMaxNodeID_bit() { return maxNodeID_bit; }
-    inline int32_t getNodeID() { return nodeID; }
-    int32_t getHomeNodeID(PAddr addr);
-    int32_t getL2NodeID(PAddr addr);
-
-    //std::map<PAddr, bool> pendingWriteBackReq;
-    std::map<PAddr, int32_t> pendingInvCounter;
-    std::map<PAddr, int32_t> invCounter;
-    //std::map<PAddr, bool> pendingReplyFlag;
-    std::map<PAddr, bool> writeBackPending;
-    std::set<PAddr> pendingInv;
-	std::map<PAddr, bool> replyReady;
-	std::map<PAddr, Time_t> replyReadyTime;
-    HASH_MAP<PAddr, CallbackBase* > pendRemoteRead;
-
-
-    //void updateDirectory(SMPMemRequest *sreq);
-    //void sendUpdateDirectory(SMPMemRequest *sreq);
-    //typedef CallbackMember1<SMPCache, SMPMemRequest *,
-    //                       &SMPCache::updateDirectory> doUpdateDirectoryCB;
 
     // BEGIN MemObj interface
 
@@ -222,10 +158,6 @@ public:
     // interface with upper level
     bool canAcceptStore(PAddr addr);
     void access(MemRequest *mreq);
-    // JJO
-    void remoteAccess(MemRequest *mreq);
-    void sendInvDirUpdate(PAddr addr, PAddr new_addr, CallbackBase *cb, bool wb, bool data);
-    void processInvDirAck(SMPMemRequest *sreq);
 
     // interface with lower level
     void returnAccess(MemRequest *mreq);
@@ -240,7 +172,6 @@ public:
 
     // interface used by protocol to access lower level
     void sendBelow(SMPMemRequest *sreq);
-    void sendBelowI(SMPMemRequest *sreq);
     void respondBelow(SMPMemRequest *sreq);
     void receiveFromBelow(SMPMemRequest *sreq);
     void doReceiveFromBelow(SMPMemRequest *sreq);
